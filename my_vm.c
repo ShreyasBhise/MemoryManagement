@@ -1,20 +1,44 @@
 #include "my_vm.h"
 
+void* physMemory; 
+void* physBitmap; 
+void* virtBitmap;
+
+int totalOffsetBits, level1Bits, level2Bits, numPages1, numPages2;
 /*
 Function responsible for allocating and setting your physical memory 
 */
 void set_physical_mem() {
+    
+    totalOffsetBits = getLog(PGSIZE);
+    int pageBits = 32 - totalOffsetBits;
 
+    if (pageBits % 2 != 0) {
+        level1Bits = (pageBits / 2) + 1;
+        level2Bits = (pageBits / 2);
+    } else {
+        level1Bits = (pageBits / 2);
+        level2Bits = (pageBits / 2);
+    }
+
+    numPages1 = MEMSIZE / PGSIZE;
+    //TODO: allocate numpages2
     //Allocate physical memory using mmap or malloc; this is the total size of
     //your memory you are simulating
+    physMemory = malloc(MEMSIZE/8);
 
-    
+
     //HINT: Also calculate the number of physical and virtual pages and allocate
     //virtual and physical bitmaps and initialize them
 
 }
 
+int getLog(int val) {
+    int ans = 0;
+    while(val >>= 1) ++ans;
 
+    return ans;
+}
 /*
  * Part 2: Add a virtual to physical page translation to the TLB.
  * Feel free to extend the function arguments or return type.

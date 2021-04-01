@@ -3,13 +3,15 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/mman.h>
+#include <math.h>
 
 //Assume the address space is 32 bits, so the max memory size is 4GB
 //Page size is 4KB
 
 //Add any important includes here which you may need
 
-#define PGSIZE 4096
+#define PGSIZE 4096 
 
 // Maximum size of virtual memory
 #define MAX_MEMSIZE 4ULL*1024*1024*1024
@@ -48,4 +50,5 @@ void get_value(void *va, void *val, int size);
 void mat_mult(void *mat1, void *mat2, int size, void *answer);
 void print_TLB_missrate();
 
+int getLog(int val);
 #endif
