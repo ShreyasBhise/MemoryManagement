@@ -3,15 +3,36 @@
 void* physMemory; 
 void* physBitmap; 
 void* virtBitmap;
+pde_t* pgdir;
 
-int totalOffsetBits, level1Bits, level2Bits, numPages1, numPages2;
+unsigned int offsetBits, level1Bits, level2Bits, numPages1, numPages2;
+unsigned int offset_bitmask, level1_bitmask, level2_bitmask;
+
+/*
+Function returns offset for virtual address
+*/
+unsigned int getOffset(void* va){
+	return ((unsigned int)va) & offset_bitmask;
+}
+/*
+Function returns index of page directory for virtual address
+*/
+unsigned int getLevel1Index(void* va){
+	return (((unsigned int)va) & level1_bitmask) >> (offsetBits+level1Bits);
+}
+/*
+Function returns index of page table for virtual address
+*/
+unsigned int getLevel2Index(void* va){
+	return (((unsigned int)va) & level2_bitmask) >> offsetBits;
+}
 /*
 Function responsible for allocating and setting your physical memory 
 */
 void set_physical_mem() {
     
-    totalOffsetBits = getLog(PGSIZE);
-    int pageBits = 32 - totalOffsetBits;
+    offsetBits = getLog(PGSIZE);
+    int pageBits = 32 - offsetBits;
 
     if (pageBits % 2 != 0) {
         level1Bits = (pageBits / 2) + 1;
@@ -21,15 +42,24 @@ void set_physical_mem() {
         level2Bits = (pageBits / 2);
     }
 
-    numPages1 = MEMSIZE / PGSIZE;
+    numPages2 = MEMSIZE / PGSIZE;
+	numPages1 = pow(2, level1Bits);
     //TODO: allocate numpages2
     //Allocate physical memory using mmap or malloc; this is the total size of
     //your memory you are simulating
-    physMemory = malloc(MEMSIZE/8);
+    physMemory = malloc(MEMSIZE);
 
-
+	pgdir = (pde_t*)calloc(numPages1, sizeof(pde_t);
     //HINT: Also calculate the number of physical and virtual pages and allocate
     //virtual and physical bitmaps and initialize them
+	physBitmap = (void*)calloc(ceil((double)numPages1/8));
+	virtBitmap = (void*)calloc(ceil((double)numPages1/8));
+	
+	// Set bitmasks for helper functions to separate virtual addresses
+	offset_bitmask = (unsigned int)pow(2, offsetBits)-1;
+	level1_bitmask = ((unsigned int)pow(2, level1Bits)-1) << (offsetBits+level2Bits);
+	level2_bitmask = ((unsigned int)pow(2, level2Bits)-1) << offsetBits;
+
 
 }
 
@@ -97,10 +127,22 @@ pte_t *translate(pde_t *pgdir, void *va) {
     * Part 2 HINT: Check the TLB before performing the translation. If
     * translation exists, then you can return physical address from the TLB.
     */
+	
+	unsigned int offset = getOffset(va);
+	unsigned int level1Index = getLevel1Index(va);
+	unsigned int level2Index = getLevel2Index(va);
 
-
-    //If translation not successfull
-    return NULL; 
+	pde_t *page_dir = pgdir + level1Index;
+	if(*page_dir == NULL){ // page directory entry does not exist
+		return NULL;
+	}
+	pte_t *page_table = ((pte_t*) *page_dir)+level2Index;
+	if(*page_table == NULL){ // page table entry does not exist
+		return NULL;
+	}
+	
+	pte_t *phys_page_addr = (pte_t*)(*page_table+offset);
+	return phys_page_addr;
 }
 
 
