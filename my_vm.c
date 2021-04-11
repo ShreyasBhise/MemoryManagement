@@ -42,18 +42,19 @@ void set_physical_mem() {
         level2Bits = (pageBits / 2);
     }
 
-    numPages2 = MEMSIZE / PGSIZE;
+    numPages2 = pow(2, pageBits);
 	numPages1 = pow(2, level1Bits);
+	numPhysPages = MEMSIZE / PGSIZE;
     //TODO: allocate numpages2
     //Allocate physical memory using mmap or malloc; this is the total size of
     //your memory you are simulating
     physMemory = malloc(MEMSIZE);
 
-	pgdir = (pde_t*)calloc(numPages1, sizeof(pde_t);
+	pgdir = (pde_t*)calloc(numPages1, sizeof(pde_t));
     //HINT: Also calculate the number of physical and virtual pages and allocate
     //virtual and physical bitmaps and initialize them
-	physBitmap = (void*)calloc(ceil((double)numPages1/8));
-	virtBitmap = (void*)calloc(ceil((double)numPages1/8));
+	physBitmap = (void*)calloc(ceil((double)numPhysPages/8));
+	virtBitmap = (void*)calloc(ceil((double)numPages2/8));
 	
 	// Set bitmasks for helper functions to separate virtual addresses
 	offset_bitmask = (unsigned int)pow(2, offsetBits)-1;
@@ -131,6 +132,12 @@ pte_t *translate(pde_t *pgdir, void *va) {
 	unsigned int offset = getOffset(va);
 	unsigned int level1Index = getLevel1Index(va);
 	unsigned int level2Index = getLevel2Index(va);
+	
+	unsigned int bitmapIndex = va >> offsetBits;
+	
+	if(virtBitmap[bitmapIndex/8] & (1 << bitmapIndex%8) == 0){ // memory has not be set to this address
+		return NULL;
+	}
 
 	pde_t *page_dir = pgdir + level1Index;
 	if(*page_dir == NULL){ // page directory entry does not exist
