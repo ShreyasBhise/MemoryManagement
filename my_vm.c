@@ -44,7 +44,7 @@ void set_physical_mem() {
 
     numPages2 = pow(2, pageBits);
 	numPages1 = pow(2, level1Bits);
-	numPhysPages = MEMSIZE / PGSIZE;
+	unsigned int numPhysPages = MEMSIZE / PGSIZE;
     //TODO: allocate numpages2
     //Allocate physical memory using mmap or malloc; this is the total size of
     //your memory you are simulating
@@ -137,7 +137,7 @@ pte_t *translate(pde_t *pgdir, void *va) {
 	
 	unsigned int bitmapIndex = (unsigned int)va >> offsetBits;
 	
-	if((unsigned int)virtBitmap[bitmapIndex/8] & (1 << bitmapIndex%8) == 0){ // memory has not be set to this address
+	if(*((char*)virtBitmap + (bitmapIndex/8)) & (1 << bitmapIndex%8) == 0){ // memory has not be set to this address
 		return NULL;
 	}
 
