@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <sys/mman.h>
 #include <math.h>
+#include <pthread.h>
 
 //Assume the address space is 32 bits, so the max memory size is 4GB
 //Page size is 4KB
@@ -33,10 +34,16 @@ struct tlb {
     * Think about the size of each TLB entry that performs virtual to physical
     * address translation.
     */
+    unsigned int va[TLB_ENTRIES];
+    pte_t pa[TLB_ENTRIES];
+    char* bitmap;
 
+    unsigned int miss, hit;
+    unsigned int curr;
 };
 struct tlb tlb_store;
 
+pthread_mutex_t lock;
 
 void set_physical_mem();
 pte_t* translate(pde_t *pgdir, void *va);

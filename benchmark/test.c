@@ -20,7 +20,6 @@ int main() {
     int address_a = 0, address_b = 0;
     int address_c = 0;
 
-    int asdfasdf = 0;
     printf("Addresses of the allocations: %x, %x, %x\n", (int)a, (int)b, (int)c);
 
     printf("Storing integers to generate a SIZExSIZE matrix\n");
@@ -29,14 +28,10 @@ int main() {
             
             address_a = (unsigned int)a + ((i * SIZE * sizeof(int))) + (j * sizeof(int));
             address_b = (unsigned int)b + ((i * SIZE * sizeof(int))) + (j * sizeof(int));
-            if(i <= j) {
-                put_value((void *)address_a, &x, sizeof(int));
-                put_value((void *)address_b, &x, sizeof(int));
-                x++;
-            } else {
-                put_value((void *)address_a, &asdfasdf, sizeof(int));
-                put_value((void *)address_b, &asdfasdf, sizeof(int));
-            }
+            
+            put_value((void *)address_a, &x, sizeof(int));
+            put_value((void *)address_b, &x, sizeof(int));
+            
 
         }
     } 

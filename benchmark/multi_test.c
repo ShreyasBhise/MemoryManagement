@@ -10,7 +10,7 @@ int alloc_size = 5000;
 
 void *alloc_mem(void *id_arg) {
     int id = *((int *)id_arg);
-    pointers[id] = umalloc(alloc_size);
+    pointers[id] = a_malloc(alloc_size);
     return NULL;
 }
 
@@ -20,7 +20,7 @@ void *put_mem(void *id_arg) {
     for (int i = 0; i < SIZE; i++) {
         for (int j = 0; j < SIZE; j++) {
             int address_a = (unsigned int)va_pointer + ((i * 5 * sizeof(int))) + (j * sizeof(int));
-            put_val((void *)address_a, &val, sizeof(int));
+            put_value((void *)address_a, &val, sizeof(int));
         }
     } 
     return NULL;
@@ -37,7 +37,7 @@ void *mat_mem(void *id_arg) {
 
 void *free_mem(void *id_arg) {
     int id = *((int *)id_arg);
-    ufree(pointers[id], alloc_size);
+    a_free(pointers[id], alloc_size);
 }
 
 int main() {
@@ -75,7 +75,7 @@ int main() {
     for (int i = 0; i < SIZE; i++) {
         for (int j = 0; j < SIZE; j++) {
             int address_a = (unsigned int)a + ((i * SIZE * sizeof(int))) + (j * sizeof(int));
-            get_val((void *)address_a, &val, sizeof(int));
+            get_value((void *)address_a, &val, sizeof(int));
             printf("%d ", val);
         }
         printf("\n");
@@ -96,7 +96,7 @@ int main() {
     for (int i = 0; i < SIZE; i++) {
         for (int j = 0; j < SIZE; j++) {
             int address_a = (unsigned int)a + ((i * SIZE * sizeof(int))) + (j * sizeof(int));
-            get_val((void *)address_a, &val, sizeof(int));
+            get_value((void *)address_a, &val, sizeof(int));
             printf("%d ", val);
         }
         printf("\n");
@@ -116,7 +116,7 @@ int main() {
     int flag = 0;
 
     while (temp != NULL) {
-        temp = umalloc(10);
+        temp = a_malloc(10);
         if ((int)temp == old) {
             printf("Free Worked!\n");
             flag = 1;
