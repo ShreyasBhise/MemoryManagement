@@ -274,14 +274,14 @@ void *a_malloc(unsigned int num_bytes) {
 	int num_pages = (int)ceil((double)num_bytes / (double)PGSIZE);
 
 	void *va = get_next_avail(num_pages);
-	puts("got page");
+	//puts("got page");
 	/*
 	if(va==NULL) {
 		printf("not able to get virtual memory\n");
 		return NULL;
 	}*/
 	void* *physArr = get_physical_memory(num_pages);
-	puts("got physical memory");
+	//puts("got physical memory");
 	if(physArr == NULL) {
 		printf("not able to get physical memory\n");
 		return NULL;
@@ -307,11 +307,22 @@ void *a_malloc(unsigned int num_bytes) {
 /* Responsible for releasing one or more memory pages using virtual address (va)
 */
 void a_free(void *va, int size) {
-
-    /* Part 1: Free the page table entries starting from this virtual address
+	 /* Part 1: Free the page table entries starting from this virtual address
      * (va). Also mark the pages free in the bitmap. Perform free only if the 
      * memory from "va" to va+size is valid.
-     *
+     */
+	int i;
+	for(i = 0; i < size; i++) {
+		unsigned int virtIndex = ((unsigned int) va >> offsetBits) + i;
+		char* c = (char*) virtBitmap + (virtIndex / 8);
+		if(*c == '0') {
+			puts("Bad call to free");
+			return;
+		}
+	}
+   
+
+	/*
      * Part 2: Also, remove the translation from the TLB
      */
      
