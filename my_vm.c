@@ -1,4 +1,5 @@
 #include "my_vm.h"
+#include "string.h"
 
 void* physMemory; 
 void* physBitmap; 
@@ -66,7 +67,6 @@ void set_physical_mem() {
 
 
 }
-
 int getLog(int val) {
     int ans = 0;
     while(val >>= 1) ++ans;
@@ -165,7 +165,7 @@ virtual address is not present, then a new entry will be added
 int
 page_map(pde_t *pgdir, void *va, void *pa)
 {
-
+	printf("in page map");
     /*HINT: Similar to translate(), find the page directory (1st level)
     and page table (2nd-level) indices. If no mapping exists, set the
     virtual to physical mapping */
@@ -174,14 +174,15 @@ page_map(pde_t *pgdir, void *va, void *pa)
 	unsigned int level2Index = getLevel2Index(va);
 	
 	unsigned int bitmapIndex = (unsigned int)va >> offsetBits;
-	
-	if(*((char*)virtBitmap + (bitmapIndex/8)) & (1 << bitmapIndex%8) == 1){ // memory has already been set to this address
-		return NULL;
+	printf("va: %u\n", bitmapIndex);
+	printf("pa: %u\n", pa);
+	if((*((char*)virtBitmap + (bitmapIndex/8)) & (1 << bitmapIndex%8)) == 1){ // memory has already been set to this address
+		return -1;
 	}
 
 	pde_t *page_dir = pgdir + level1Index;
 	if(*page_dir == NULL){ // page directory entry does not exist
-		*page_dir = (pde_t) malloc(pow(2, level2Bits) * sizeof(pte_t));
+		*page_dir = (pde_t) calloc(pow(2, level2Bits), sizeof(pte_t));
 	}
 	pte_t *page_table = ((pte_t*) *page_dir)+level2Index;
 	if(*page_table == NULL){ // page table entry does not exist
@@ -205,12 +206,13 @@ void *get_next_avail(int num_pages) {
 		char* c = (char*) virtBitmap + i;
 		char curr = *c;
 		for(j = 0; j<8; j++){
-			if(curr & pow(2, 7-j) == 0){
+			if((curr&(int)pow(2, j)) == 0){
 				if(currIndex == -1){
 					currIndex = i;
 					currOffset = j;
 				}
 				count++;
+				printf("count/num_pages: %d/%d\n", count, num_pages);
 				if(count == num_pages){
 					return (void*)((currIndex*8 + currOffset) << offsetBits);
 				}
@@ -233,12 +235,15 @@ void **get_physical_memory(int num_pages) {
 	unsigned int count = 0;
 	void** arr = (void*)malloc(sizeof(void*)*num_pages);
 	for(i = 0; i< ceil((double)numPages2/8); i++){
-		char* c = (char*) virtBitmap + i;
+		char* c = (char*) physBitmap + i;
 		char curr = *c;
 		for(j = 0; j<8; j++){
-			if(curr & pow(2, 7-j) == 0){
-				arr[count] = (void*)((i*8 + j) << offsetBits);
+			printf("test: %d\n", (curr & (int)pow(2, j)));
+			if((curr & (int)pow(2, j)) == 0){
+				arr[count] = (void*)(((i*8 + j) << offsetBits)+physMemory);
 				count++;
+				printf("%u ", (unsigned int)arr[count-1]);
+				printf("%u ", *((unsigned int*)arr[count-1]));
 				if(count == num_pages){
 					return (void*)(arr);
 				}
@@ -266,17 +271,33 @@ void *a_malloc(unsigned int num_bytes) {
     * have to mark which physical pages are used. 
     */
 	
-	int num_pages = (int)ceil((double)(num_bytes / PGSIZE));
+	int num_pages = (int)ceil((double)num_bytes / (double)PGSIZE);
 
 	void *va = get_next_avail(num_pages);
-	if(va==NULL) return NULL;
+	puts("got page");
+	/*
+	if(va==NULL) {
+		printf("not able to get virtual memory\n");
+		return NULL;
+	}*/
 	void* *physArr = get_physical_memory(num_pages);
-	if(physArr = NULL) return NULL;
-
+	puts("got physical memory");
+	if(physArr == NULL) {
+		printf("not able to get physical memory\n");
+		return NULL;
+	}
 	for(int i = 0; i<num_pages; i++){
-		int temp = page_map(pgdir, va+(int)pow(2, offsetBits)/8, physArr[i]);
+		printf("%d ", i);
+		int temp = page_map(pgdir, va+i*(int)(pow(2, offsetBits)), physArr[i]);
 		if(temp == -1) {
 			printf("bad mapping in malloc\n");
+		} else {
+			unsigned int virtIndex = ((unsigned int)va >> offsetBits)+i;
+			char* c = (char*)virtBitmap + (virtIndex/8);
+			*c = *c | (1 << (virtIndex%8));
+			unsigned int physIndex = ((unsigned int)physArr[i] - (unsigned int)physMemory) >> offsetBits;
+			c = (char*)physBitmap + (physIndex/8);
+			*c = *c | (1 << (physIndex%8));
 		}
 	}
 
@@ -309,10 +330,18 @@ void put_value(void *va, void *val, int size) {
      * function.
      */
 	
-	int num_pages = (int)ceil((double)(size / PGSIZE));
-
+	int num_pages = (int)ceil((double)size / (double)PGSIZE);
+	int size_left = size;
 	for(int i = 0; i<num_pages; i++){
-		
+		int to_set = size_left < PGSIZE ? size_left : PGSIZE;
+		char* pa = (char*)translate(pgdir, va+i*(int)(pow(2, offsetBits)));
+		if(pa==NULL){
+			printf("failed to translate in put_value\n");
+		}
+		for(int j = 0; j<to_set; j++){
+			*(pa+j) = *((char*)val+j+i*PGSIZE);
+		}
+		size_left -= to_set;
 	}
 
 }
@@ -324,10 +353,19 @@ void get_value(void *va, void *val, int size) {
     /* HINT: put the values pointed to by "va" inside the physical memory at given
     * "val" address. Assume you can access "val" directly by derefencing them.
     */
-
-
-
-
+	int num_pages = (int)ceil((double)size / (double)PGSIZE);
+	int size_left = size;
+	for(int i = 0; i<num_pages; i++){
+		int to_set = size_left < PGSIZE ? size_left : PGSIZE;
+		char* pa = (char*)translate(pgdir, va+i*(int)(pow(2, offsetBits)));
+		if(pa==NULL){
+			printf("failed to translate in get_value\n");
+		}
+		for(int j = 0; j<to_set; j++){
+			*((char*)val+j+i*PGSIZE) = *(pa+j);
+		}
+		size_left -= to_set;
+	}
 }
 
 
