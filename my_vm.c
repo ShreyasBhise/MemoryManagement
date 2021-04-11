@@ -181,7 +181,7 @@ page_map(pde_t *pgdir, void *va, void *pa)
 
 	pde_t *page_dir = pgdir + level1Index;
 	if(*page_dir == NULL){ // page directory entry does not exist
-		*pg_dir = (pde_t) malloc(pow(2, level2Bits) * sizeof(pte_t));
+		*page_dir = (pde_t) malloc(pow(2, level2Bits) * sizeof(pte_t));
 	}
 	pte_t *page_table = ((pte_t*) *page_dir)+level2Index;
 	if(*page_table == NULL){ // page table entry does not exist
@@ -266,7 +266,7 @@ void *a_malloc(unsigned int num_bytes) {
     * have to mark which physical pages are used. 
     */
 	
-	num_pages = (int)ceil((double)(num_bytes / PGSIZE));
+	int num_pages = (int)ceil((double)(num_bytes / PGSIZE));
 
 	void *va = get_next_avail(num_pages);
 	if(va==NULL) return NULL;
@@ -274,7 +274,7 @@ void *a_malloc(unsigned int num_bytes) {
 	if(physArr = NULL) return NULL;
 
 	for(int i = 0; i<num_pages; i++){
-		int temp = page_map(pgdir, va+pow(2, offsetBits)/8, physArr[i]);
+		int temp = page_map(pgdir, va+(int)pow(2, offsetBits)/8, physArr[i]);
 		if(temp == -1) {
 			printf("bad mapping in malloc\n");
 		}
