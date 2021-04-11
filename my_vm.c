@@ -7,6 +7,7 @@ pde_t* pgdir;
 
 unsigned int offsetBits, level1Bits, level2Bits, numPages1, numPages2;
 unsigned int offset_bitmask, level1_bitmask, level2_bitmask;
+unsigned int is_init = 0;
 
 /*
 Function returns offset for virtual address
@@ -30,7 +31,7 @@ unsigned int getLevel2Index(void* va){
 Function responsible for allocating and setting your physical memory 
 */
 void set_physical_mem() {
-    
+    is_init = 1;
     offsetBits = getLog(PGSIZE);
     int pageBits = 32 - offsetBits;
 
@@ -168,18 +169,84 @@ page_map(pde_t *pgdir, void *va, void *pa)
     /*HINT: Similar to translate(), find the page directory (1st level)
     and page table (2nd-level) indices. If no mapping exists, set the
     virtual to physical mapping */
+	unsigned int offset = getOffset(va);
+	unsigned int level1Index = getLevel1Index(va);
+	unsigned int level2Index = getLevel2Index(va);
+	
+	unsigned int bitmapIndex = (unsigned int)va >> offsetBits;
+	
+	if(*((char*)virtBitmap + (bitmapIndex/8)) & (1 << bitmapIndex%8) == 1){ // memory has already been set to this address
+		return NULL;
+	}
 
-    return -1;
+	pde_t *page_dir = pgdir + level1Index;
+	if(*page_dir == NULL){ // page directory entry does not exist
+		*pg_dir = (pde_t) malloc(pow(2, level2Bits) * sizeof(pte_t));
+	}
+	pte_t *page_table = ((pte_t*) *page_dir)+level2Index;
+	if(*page_table == NULL){ // page table entry does not exist
+		*page_table = (pte_t) pa;
+		return 0;
+	} else { // page table entry has already been set
+		return -1;
+	}
 }
 
 
 /*Function that gets the next available page
 */
 void *get_next_avail(int num_pages) {
- 
+ 	unsigned int i;
+	unsigned int j;
+	unsigned int currIndex = -1;
+	unsigned int currOffset = -1;
+	unsigned int count = 0;
+	for(i = 0; i< ceil((double)numPages2/8); i++){
+		char* c = (char*) virtBitmap + i;
+		char curr = *c;
+		for(j = 0; j<8; j++){
+			if(curr & pow(2, 7-j) == 0){
+				if(currIndex == -1){
+					currIndex = i;
+					currOffset = j;
+				}
+				count++;
+				if(count == num_pages){
+					return (void*)((currIndex*8 + currOffset) << offsetBits);
+				}
+			} else {
+				currIndex = -1;
+				currOffset = -1;
+				count = 0;
+			}
+		}
+	}
+	return NULL;
     //Use virtual address bitmap to find the next free page
 }
 
+/* Function that gets array of all needed physical page addresses
+*/
+void **get_physical_memory(int num_pages) {
+	unsigned int i;
+	unsigned int j;
+	unsigned int count = 0;
+	void** arr = (void*)malloc(sizeof(void*)*num_pages);
+	for(i = 0; i< ceil((double)numPages2/8); i++){
+		char* c = (char*) virtBitmap + i;
+		char curr = *c;
+		for(j = 0; j<8; j++){
+			if(curr & pow(2, 7-j) == 0){
+				arr[count] = (void*)((i*8 + j) << offsetBits);
+				count++;
+				if(count == num_pages){
+					return (void*)(arr);
+				}
+			}
+		}
+	}
+	return NULL;
+}
 
 /* Function responsible for allocating pages
 and used by the benchmark
@@ -190,14 +257,30 @@ void *a_malloc(unsigned int num_bytes) {
      * HINT: If the physical memory is not yet initialized, then allocate and initialize.
      */
 
+	if(!is_init) set_physical_mem();
+
    /* 
     * HINT: If the page directory is not initialized, then initialize the
     * page directory. Next, using get_next_avail(), check if there are free pages. If
     * free pages are available, set the bitmaps and map a new page. Note, you will 
     * have to mark which physical pages are used. 
     */
+	
+	num_pages = (int)ceil((double)(num_bytes / PGSIZE));
 
-    return NULL;
+	void *va = get_next_avail(num_pages);
+	if(va==NULL) return NULL;
+	void* *physArr = get_physical_memory(num_pages);
+	if(physArr = NULL) return NULL;
+
+	for(int i = 0; i<num_pages; i++){
+		int temp = page_map(pgdir, va+pow(2, offsetBits)/8, physArr[i]);
+		if(temp == -1) {
+			printf("bad mapping in malloc\n");
+		}
+	}
+
+    return va;
 }
 
 /* Responsible for releasing one or more memory pages using virtual address (va)
@@ -225,9 +308,12 @@ void put_value(void *va, void *val, int size) {
      * than one page. Therefore, you may have to find multiple pages using translate()
      * function.
      */
+	
+	int num_pages = (int)ceil((double)(size / PGSIZE));
 
-
-
+	for(int i = 0; i<num_pages; i++){
+		
+	}
 
 }
 
