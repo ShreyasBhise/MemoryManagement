@@ -174,8 +174,8 @@ page_map(pde_t *pgdir, void *va, void *pa)
 	unsigned int level2Index = getLevel2Index(va);
 	
 	unsigned int bitmapIndex = (unsigned int)va >> offsetBits;
-	printf("va: %u\n", bitmapIndex);
-	printf("pa: %u\n", pa);
+//	printf("va: %u\n", bitmapIndex);
+	//printf("pa: %u\n", pa);
 	if((*((char*)virtBitmap + (bitmapIndex/8)) & (1 << bitmapIndex%8)) == 1){ // memory has already been set to this address
 		return -1;
 	}
@@ -212,7 +212,7 @@ void *get_next_avail(int num_pages) {
 					currOffset = j;
 				}
 				count++;
-				printf("count/num_pages: %d/%d\n", count, num_pages);
+		//		printf("count/num_pages: %d/%d\n", count, num_pages);
 				if(count == num_pages){
 					return (void*)((currIndex*8 + currOffset) << offsetBits);
 				}
@@ -238,12 +238,12 @@ void **get_physical_memory(int num_pages) {
 		char* c = (char*) physBitmap + i;
 		char curr = *c;
 		for(j = 0; j<8; j++){
-			printf("test: %d\n", (curr & (int)pow(2, j)));
+			//printf("test: %d\n", (curr & (int)pow(2, j)));
 			if((curr & (int)pow(2, j)) == 0){
 				arr[count] = (void*)(((i*8 + j) << offsetBits)+physMemory);
 				count++;
-				printf("%u ", (unsigned int)arr[count-1]);
-				printf("%u ", *((unsigned int*)arr[count-1]));
+				//printf("%u ", (unsigned int)arr[count-1]);
+				//printf("%u ", *((unsigned int*)arr[count-1]));
 				if(count == num_pages){
 					return (void*)(arr);
 				}
@@ -287,7 +287,7 @@ void *a_malloc(unsigned int num_bytes) {
 		return NULL;
 	}
 	for(int i = 0; i<num_pages; i++){
-		printf("%d ", i);
+		//printf("%d ", i);
 		int temp = page_map(pgdir, va+i*(int)(pow(2, offsetBits)), physArr[i]);
 		if(temp == -1) {
 			printf("bad mapping in malloc\n");
@@ -376,15 +376,29 @@ argument representing the number of rows and columns. After performing matrix
 multiplication, copy the result to answer.
 */
 void mat_mult(void *mat1, void *mat2, int size, void *answer) {
-
     /* Hint: You will index as [i * size + j] where  "i, j" are the indices of the
      * matrix accessed. Similar to the code in test.c, you will use get_value() to
      * load each element and perform multiplication. Take a look at test.c! In addition to 
      * getting the values from two matrices, you will perform multiplication and 
      * store the result to the "answer array"
      */
-
-       
+	int valM1 = 0;
+	int valM2 = 0;
+	int sum;
+	int i, j, k;
+	for (i = 0; i < size; i++) {
+        for (j = 0; j < size; j++) {
+			sum = 0;
+			for(k = 0; k < size; k++) {
+				int address_a = (unsigned int)mat1 + ((i * size * sizeof(int)) + (k * sizeof(int)));
+				int address_b = (unsigned int)mat2 + ((k * size * sizeof(int)) + (j * sizeof(int)));
+				get_value((void *)address_a, &valM1, sizeof(int));
+				get_value((void *)address_b, &valM2, sizeof(int));
+				sum += (valM1 * valM2);
+			}
+			put_value((int*) answer + ((i*size)+j), &sum, sizeof(int));
+        }
+    }   
 }
 
 

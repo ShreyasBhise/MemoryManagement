@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include "../my_vm.h"
 
-#define SIZE 5
-#define ARRAY_SIZE 400
+#define SIZE 25
+#define ARRAY_SIZE (PGSIZE * 2)
 
 int main() {
 
