@@ -118,7 +118,7 @@ check_TLB(void *va) {
 			continue;
 		if (tlb_store.va[i] == ((unsigned int) va >> offsetBits)) {
 			tlb_store.hit++;
-			return tlb_store.pa[i];
+			return &tlb_store.pa[i]; //check this?
 		}
 	}
 
@@ -157,25 +157,27 @@ pte_t *translate(pde_t *pgdir, void *va) {
     * Part 2 HINT: Check the TLB before performing the translation. If
     * translation exists, then you can return physical address from the TLB.
     */
-	
+	pte_t* phys_addr = check_TLB(va);
+	if(phys_addr != NULL)
+		return phys_addr;
 	unsigned int offset = getOffset(va);
 	unsigned int level1Index = getLevel1Index(va);
 	unsigned int level2Index = getLevel2Index(va);
 	
 	unsigned int bitmapIndex = (unsigned int)va >> offsetBits;
 	
-	if(*((char*)virtBitmap + (bitmapIndex/8)) & (1 << bitmapIndex%8) == 0){ // memory has not be set to this address
+	if(*((char*)virtBitmap + (bitmapIndex / 8)) & (1 << bitmapIndex % 8) == 0) // memory has not be set to this address
 		return NULL;
-	}
+
 
 	pde_t *page_dir = pgdir + level1Index;
-	if(*page_dir == 0){ // page directory entry does not exist
+	if(*page_dir == 0) // page directory entry does not exist
 		return NULL;
-	}
+	
 	pte_t *page_table = ((pte_t*) *page_dir)+level2Index;
-	if(*page_table == 0){ // page table entry does not exist
+	if(*page_table == 0) // page table entry does not exist
 		return NULL;
-	}
+	
 	
 	pte_t *phys_page_addr = (pte_t*)(*page_table+offset);
 	return phys_page_addr;
@@ -340,7 +342,7 @@ void a_free(void *va, int size) {
 	for(i = 0; i < size; i++) {
 		unsigned int virtIndex = ((unsigned int) va >> offsetBits) + i;
 		char* c = (char*) virtBitmap + (virtIndex / 8);
-		*c = *c ^ (int)pow(2, virtIndex % 8);
+		*c ^= (int)pow(2, virtIndex % 8);
 	}
 
 	/*
@@ -381,7 +383,6 @@ void put_value(void *va, void *val, int size) {
 
 /*Given a virtual address, this function copies the contents of the page to val*/
 void get_value(void *va, void *val, int size) {
-
     /* HINT: put the values pointed to by "va" inside the physical memory at given
     * "val" address. Assume you can access "val" directly by derefencing them.
     */
