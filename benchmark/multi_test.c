@@ -1,12 +1,12 @@
 #include "../my_vm.h"
 #include <time.h>
-#define num_threads 50
+#define num_threads 30
 #define SIZE 50
 
 void *pointers[num_threads];
 int ids[num_threads];
 pthread_t threads[num_threads];
-int alloc_size = 1000000;
+int alloc_size = 100000;
 
 void *alloc_mem(void *id_arg) {
     int id = *((int *)id_arg);
@@ -19,7 +19,7 @@ void *put_mem(void *id_arg) {
     void *va_pointer = pointers[*((int *)id_arg)];
     for (int i = 0; i < SIZE; i++) {
         for (int j = 0; j < SIZE; j++) {
-            int address_a = (unsigned int)va_pointer + ((i * 5 * sizeof(int))) + (j * sizeof(int));
+            int address_a = (unsigned int)va_pointer + ((i * SIZE * sizeof(int))) + (j * sizeof(int));
             put_value((void *)address_a, &val, sizeof(int));
         }
     } 

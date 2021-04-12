@@ -137,10 +137,10 @@ check_TLB(void *va) {
 			continue;
 		if (tlb_store.va[i] == ((unsigned int) va >> offsetBits)) {
 			tlb_store.hit++;
-			return tlb_store.pa + i; 
+			return (pte_t *)tlb_store.pa[i]; 
 		}
 	}
-
+	// puts("not found in TLB");
 	return NULL; //Not in TLB
 }
 
@@ -181,28 +181,32 @@ pte_t *translate(pde_t *pgdir, void *va) {
     */
 	pte_t* phys_addr = check_TLB(va);
 	if(phys_addr != NULL)
-		return phys_addr;
+		return (pte_t*)((unsigned int)phys_addr + getOffset(va));
 	unsigned int offset = getOffset(va);
 	unsigned int level1Index = getLevel1Index(va);
 	unsigned int level2Index = getLevel2Index(va);
 	
 	unsigned int bitmapIndex = (unsigned int)va >> offsetBits;
 	
-	if(*((char*)virtBitmap + (bitmapIndex / 8)) & (1 << bitmapIndex % 8) == 0) // memory has not be set to this address
+	if(*((char*)virtBitmap + (bitmapIndex / 8)) & (1 << bitmapIndex % 8) == 0){ // memory has not been set to this address
+		puts("1 \n");
 		return NULL;
+	}
 
 
 	pde_t *page_dir = pgdir + level1Index;
-	if(*page_dir == 0) // page directory entry does not exist
+	if(*page_dir == 0){ // page directory entry does not exist
+		puts("2 \n");
 		return NULL;
-	
+	}
 	pte_t *page_table = ((pte_t*) *page_dir)+level2Index;
-	if(*page_table == 0) // page table entry does not exist
+	if(*page_table == 0){ // page table entry does not exist
+		puts("3 \n");
 		return NULL;
-	
+	}
 	
 	pte_t *phys_page_addr = (pte_t*)(*page_table+offset);
-	add_TLB(va, phys_page_addr);
+	add_TLB(va, (pte_t*)*page_table);
 	return phys_page_addr;
 }
 
@@ -409,6 +413,7 @@ void put_value(void *va, void *val, int size) {
 		if(pa==NULL){
 			printf("failed to translate in put_value\n");
 		}
+
 		for(int j = 0; j<to_set; j++){
 			*(pa+j) = *((char*)val+j+i*PGSIZE);
 		}
