@@ -132,8 +132,8 @@ add_TLB(void *va, void *pa)
 pte_t *
 check_TLB(void *va) {
 	for(int i = 0; i < TLB_ENTRIES; i++) {
-		char c = tlb_store.bitmap[i/8];
-		if((c & (int)pow(2, i % 8)) == 0) 
+		char *c = tlb_store.bitmap + (i/8);
+		if((*c & (int)pow(2, i % 8)) == 0) 
 			continue;
 		if (tlb_store.va[i] == ((unsigned int) va >> offsetBits)) {
 			tlb_store.hit++;
@@ -351,8 +351,9 @@ void a_free(void *va, int size) {
      */
 
 	pthread_mutex_lock(&lock);
+	int num_pages = (int)ceil((double) size/(double)PGSIZE);
 	int i;
-	for(i = 0; i < size; i++) {
+	for(i = 0; i < num_pages; i++) {
 		unsigned int virtIndex = ((unsigned int) va >> offsetBits) + i;
 		char* c = (char*) virtBitmap + (virtIndex / 8);
 		if((*c & (int)pow(2, virtIndex % 8)) == '0') {
@@ -362,7 +363,7 @@ void a_free(void *va, int size) {
 		}
 	}
 
-	for(i = 0; i < size; i++) {
+	for(i = 0; i < num_pages; i++) {
 		unsigned int virtIndex = ((unsigned int) va >> offsetBits) + i;
 		char* c = (char*) virtBitmap + (virtIndex / 8);
 		*c ^= (int)pow(2, virtIndex % 8);
@@ -371,15 +372,18 @@ void a_free(void *va, int size) {
 	/*
      * Part 2: Also, remove the translation from the TLB
      */
-     for(int i = 0; i < TLB_ENTRIES; i++) {
-		char *c = tlb_store.bitmap + (i/8);
-		if((*c & (int)pow(2, i % 8)) == 0) 
-			continue;
-		if (tlb_store.va[i] == ((unsigned int) va >> offsetBits)) {
-			tlb_store.va[i] = 0;
-			tlb_store.pa[i] = 0;
-			char bit = 1 << (i % 8);
-    		*c &= ~bit;
+	for(int j = 0; j < num_pages; j++) {
+		unsigned int temp_va = ((unsigned int) va >> offsetBits) + j;
+		for(int i = 0; i < TLB_ENTRIES; i++) {
+			char *c = tlb_store.bitmap + (i/8);
+			if((*c & (int)pow(2, i % 8)) == 0) 
+				continue;
+			if (tlb_store.va[i] == temp_va) {
+				tlb_store.va[i] = 0;
+				tlb_store.pa[i] = 0;
+				char bit = 1 << (i % 8);
+				*c &= ~bit;
+			}
 		}
 	}
     pthread_mutex_unlock(&lock);

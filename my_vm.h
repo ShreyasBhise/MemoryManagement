@@ -12,7 +12,7 @@
 
 //Add any important includes here which you may need
 
-#define PGSIZE 4096 
+#define PGSIZE 65536
 
 // Maximum size of virtual memory
 #define MAX_MEMSIZE 4ULL*1024*1024*1024
@@ -26,7 +26,7 @@ typedef unsigned long pte_t;
 // Represents a page directory entry
 typedef unsigned long pde_t;
 
-#define TLB_ENTRIES 512
+#define TLB_ENTRIES 25
 
 //Structure to represents TLB
 struct tlb {
