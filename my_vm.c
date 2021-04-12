@@ -66,6 +66,9 @@ void set_physical_mem() {
 	
 	tlb_store.bitmap = (void*)malloc(ceil((double)TLB_ENTRIES/8));
 	memset(tlb_store.bitmap, 0, ceil((double)TLB_ENTRIES/8));
+	tlb_store.miss = 0;
+	tlb_store.hit = 0;
+	tlb_store.curr = 0;
 
 	// Set bitmasks for helper functions to separate virtual addresses
 	offset_bitmask = (unsigned int)pow(2, offsetBits)-1;
@@ -87,14 +90,30 @@ int getLog(int val) {
 int
 add_TLB(void *va, void *pa)
 {
+
 	for(int i = 0; i < TLB_ENTRIES; i++) {
-		if (tlb_store.va[i] == ((unsigned int) va >> offsetBits)) {
+		char *c = tlb_store.bitmap + (i/8);
+		if ((*c & (int)pow(2, i % 8)) == 1 && tlb_store.va[i] == ((unsigned int) va >> offsetBits)) {
 			puts("This virtual address is already in the TLB");
 			return -1;
 		}
 	}
+	tlb_store.miss++;
+	//See if there are any empty entries in the TLB
+	for(int i = 0; i < TLB_ENTRIES; i++) {
+		char *c = tlb_store.bitmap + (i/8);
+		if((*c & (int)pow(2, i % 8)) == 0) {
+			tlb_store.va[i] = ((unsigned int) va >> offsetBits);
+			tlb_store.pa[i] =  (pte_t) pa;
+
+			
+    		char bit = 1 << (i % 8);
+    		*c |= bit;
+			return 0;
+		}
+	}
 	tlb_store.va[tlb_store.curr] = ((unsigned int) va >> offsetBits);
-	tlb_store.va[tlb_store.curr] =  (pte_t) pa;
+	tlb_store.pa[tlb_store.curr] =  (pte_t) pa;
 	
 	tlb_store.curr = (tlb_store.curr + 1) % TLB_ENTRIES;
 	
@@ -118,7 +137,7 @@ check_TLB(void *va) {
 			continue;
 		if (tlb_store.va[i] == ((unsigned int) va >> offsetBits)) {
 			tlb_store.hit++;
-			return &tlb_store.pa[i]; //check this?
+			return tlb_store.pa + i; 
 		}
 	}
 
@@ -134,13 +153,16 @@ void
 print_TLB_missrate()
 {
     double miss_rate = 0;	
+	double hit_rate = 0;
 
     /*Part 2 Code here to calculate and print the TLB miss rate*/
+	double misses = tlb_store.miss;
+	double hits = tlb_store.hit;
 
+	miss_rate = misses/(misses + hits);
+	hit_rate = hits/(misses + hits);
 
-
-
-    fprintf(stderr, "TLB miss rate %lf \n", miss_rate);
+    fprintf(stderr, "TLB miss rate %lf \nTLB hit rate %lf \nTotal hits: %lf\nTotal misses: %lf\n", miss_rate, hit_rate, hits, misses);
 }
 
 
@@ -180,6 +202,7 @@ pte_t *translate(pde_t *pgdir, void *va) {
 	
 	
 	pte_t *phys_page_addr = (pte_t*)(*page_table+offset);
+	add_TLB(va, phys_page_addr);
 	return phys_page_addr;
 }
 
@@ -253,7 +276,7 @@ void **get_physical_memory(int num_pages) {
 	unsigned int i;
 	unsigned int j;
 	unsigned int count = 0;
-	void** arr = (void*)malloc(sizeof(void*)*num_pages);
+	void** arr = (void*) malloc(sizeof(void*) *num_pages);
 	for(i = 0; i< ceil((double)numPages2/8); i++){
 		char* c = (char*) physBitmap + i;
 		char curr = *c;
@@ -348,7 +371,17 @@ void a_free(void *va, int size) {
 	/*
      * Part 2: Also, remove the translation from the TLB
      */
-     
+     for(int i = 0; i < TLB_ENTRIES; i++) {
+		char *c = tlb_store.bitmap + (i/8);
+		if((*c & (int)pow(2, i % 8)) == 0) 
+			continue;
+		if (tlb_store.va[i] == ((unsigned int) va >> offsetBits)) {
+			tlb_store.va[i] = 0;
+			tlb_store.pa[i] = 0;
+			char bit = 1 << (i % 8);
+    		*c &= ~bit;
+		}
+	}
     pthread_mutex_unlock(&lock);
 }
 

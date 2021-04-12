@@ -38,8 +38,7 @@ struct tlb {
     pte_t pa[TLB_ENTRIES];
     char* bitmap;
 
-    unsigned int miss, hit;
-    unsigned int curr;
+    int miss, hit, curr;
 };
 struct tlb tlb_store;
 
