@@ -370,7 +370,11 @@ void a_free(void *va, int size) {
 	for(i = 0; i < num_pages; i++) {
 		unsigned int virtIndex = ((unsigned int) va >> offsetBits) + i;
 		char* c = (char*) virtBitmap + (virtIndex / 8);
-		*c ^= (int)pow(2, virtIndex % 8);
+		*c &= ~(1 << virtIndex%8);
+		unsigned int pa = (unsigned int)translate(pgdir, (void*)(virtIndex << offsetBits));
+		unsigned int physIndex = (pa - (unsigned int)physMemory) >> offsetBits;
+		c = (char*)physBitmap + (physIndex/8);
+		*c &= ~(1 << physIndex%8);
 	}
 
 	/*
