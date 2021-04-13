@@ -9,6 +9,7 @@ pde_t* pgdir;
 unsigned int offsetBits, level1Bits, level2Bits, numPages1, numPages2;
 unsigned int offset_bitmask, level1_bitmask, level2_bitmask;
 unsigned int is_init = 0;
+unsigned int freeing = 0;
 
 /*
 Function returns offset for virtual address
@@ -206,7 +207,11 @@ pte_t *translate(pde_t *pgdir, void *va) {
 	}
 	
 	pte_t *phys_page_addr = (pte_t*)(*page_table+offset);
-	add_TLB(va, (pte_t*)*page_table);
+	if(freeing) { // TLB check missed if at this point. add_TLB() adds 1 to misses, so must do this here
+		tlb_store.miss++;
+	} else {
+		add_TLB(va, (pte_t*)*page_table);
+	}
 	return phys_page_addr;
 }
 
